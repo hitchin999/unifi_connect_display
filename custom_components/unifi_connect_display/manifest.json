@@ -1,0 +1,20 @@
+{
+  "domain": "unifi_connect_display",
+  "name": "UniFi Connect Display",
+  "documentation": "https://github.com/hitchin999/unifi_connect_display",
+  "config_flow": true,
+  "requirements": [
+    "aiohttp>=3.8"
+  ],
+  "dependencies": [],
+  "codeowners": [
+    "@hitchin999"
+  ],
+  "version": "0.0.1",
+  "platforms": [
+    "sensor",
+    "switch",
+    "button"
+  ],
+  "iot_class": "local_polling"
+}
