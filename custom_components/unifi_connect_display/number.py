@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import DeviceInfo
+from aiohttp import ClientResponseError
 
 from .api import UniFiConnectClient
 from .const import DOMAIN, ACTION_MAPS
@@ -18,7 +19,7 @@ async def async_setup_entry(
 ):
     client: UniFiConnectClient = hass.data[DOMAIN][entry.entry_id]
     devices = await client.list_devices()
-    entities = []
+    entities: list[NumberEntity] = []
 
     for dev in devices:
         raw_model = dev.get("model") or dev.get("type", {}).get("name", "")
@@ -74,6 +75,10 @@ class UniFiBrightnessNumber(NumberEntity):
                 self._device_id, ACTION_MAPS[self._model]["switch"]
             )
             self._value = data.get("brightness")
+        except ClientResponseError as e:
+            # ignore 404 if switch/status unsupported
+            if e.status != 404:
+                _LOGGER.warning("Brightness update failed for %s: %s", self._attr_name, e)
         except Exception as e:
             _LOGGER.warning("Brightness update failed for %s: %s", self._attr_name, e)
 
@@ -101,6 +106,7 @@ class UniFiVolumeNumber(NumberEntity):
 
     async def async_set_native_value(self, value: float):
         args = f"\"value\":{int(value)}"
+        # pick whichever key exists
         key = "volume" if "volume" in ACTION_MAPS[self._model] else "set_volume"
         await self._client.perform_action(
             self._device_id, ACTION_MAPS[self._model][key], args
@@ -109,9 +115,14 @@ class UniFiVolumeNumber(NumberEntity):
 
     async def async_update(self):
         try:
+            # Use the switch action to pull current state
             data = await self._client.perform_action(
                 self._device_id, ACTION_MAPS[self._model]["switch"]
             )
             self._value = data.get("volume")
+        except ClientResponseError as e:
+            # ignore 404 if this device doesn’t support volume reporting
+            if e.status != 404:
+                _LOGGER.warning("Volume update failed for %s: %s", self._attr_name, e)
         except Exception as e:
             _LOGGER.warning("Volume update failed for %s: %s", self._attr_name, e)
