@@ -1,8 +1,11 @@
 # custom_components/unifi_connect_display/__init__.py
 
 import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+
 from .api import UniFiConnectClient
 from .const import DOMAIN
 
@@ -25,6 +28,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await client.login()
     hass.data[DOMAIN][entry.entry_id] = client
+
+    # — Listen for HA stopping so we can always close our session —
+    async def _shutdown(event):
+        """Close our client session on HA stop."""
+        await client.close()
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _shutdown)
 
     # 2️⃣ Forward to all supported platforms
     await hass.config_entries.async_forward_entry_setups(
