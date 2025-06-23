@@ -2,7 +2,7 @@
 
 import logging
 import aiohttp
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, TCPConnector
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,7 +21,11 @@ class UniFiConnectClient:
 
     async def login(self) -> None:
         """Authenticate like the Groovy driver and capture CSRF token."""
-        self._session = aiohttp.ClientSession(cookie_jar=aiohttp.CookieJar(unsafe=True))
+        # ← use force_close connector so close() really tears down sockets
+        self._session = aiohttp.ClientSession(
+            connector=TCPConnector(force_close=True),
+            cookie_jar=aiohttp.CookieJar(unsafe=True),
+        )
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
         for path, payload in [
@@ -186,5 +190,6 @@ class UniFiConnectClient:
     async def close(self) -> None:
         """Close the aiohttp session."""
         if self._session:
+            _LOGGER.debug("Closing UniFi Connect HTTP session")
             await self._session.close()
             self._session = None
