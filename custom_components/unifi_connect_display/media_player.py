@@ -1,6 +1,7 @@
 # custom_components/unifi_connect_display/media_player.py
 
 import logging
+from aiohttp import ClientResponseError
 
 from homeassistant.components.media_player import (
     MediaPlayerEntity,
@@ -67,7 +68,7 @@ class UniFiMediaPlayer(MediaPlayerEntity):
         self._device_id = device_id
         self._model = model
 
-        # Name “Media (Pool Display Cast Pro)” so HA won't strip the prefix
+        # Prefix “Media (… )” so HA doesn’t strip our device_name
         self._attr_name = f"Media ({device_name})"
         self._attr_unique_id = f"ucd_{device_id}_media"
         self._attr_state = MediaPlayerState.OFF
@@ -88,7 +89,7 @@ class UniFiMediaPlayer(MediaPlayerEntity):
             action = ACTION_MAPS[self._model].get("switch", ACTION_MAPS[self._model]["play"])
             data = await self._client.perform_action(self._device_id, action)
 
-            # Power state → IDLE/ OFF
+            # Power state → IDLE / OFF
             self._attr_state = (
                 MediaPlayerState.IDLE if data.get("powerState") == "ON" else MediaPlayerState.OFF
             )
@@ -98,18 +99,22 @@ class UniFiMediaPlayer(MediaPlayerEntity):
             if bri is not None:
                 self._attr_volume_level = bri / 100.0
 
+        except ClientResponseError as e:
+            # some models (e.g. Cast-Pro) don't support switch → ignore 404
+            if e.status != 404:
+                _LOGGER.warning("Media update failed for %s: %s", self._attr_name, e)
         except Exception as e:
             _LOGGER.warning("Media update failed for %s: %s", self._attr_name, e)
 
     async def async_turn_on(self) -> None:
         """Turn the display on."""
-        action = ACTION_MAPS[self._model].get("display_on", ACTION_MAPS[self._model].get("power_on"))
+        action = ACTION_MAPS[self._model].get("display_on", ACTION_MAPS[self._model]["power_on"])
         await self._client.perform_action(self._device_id, action)
         self._attr_state = MediaPlayerState.IDLE
 
     async def async_turn_off(self) -> None:
         """Turn the display off."""
-        action = ACTION_MAPS[self._model].get("display_off", ACTION_MAPS[self._model].get("power_off"))
+        action = ACTION_MAPS[self._model].get("display_off", ACTION_MAPS[self._model]["power_off"])
         await self._client.perform_action(self._device_id, action)
         self._attr_state = MediaPlayerState.OFF
 
@@ -132,9 +137,13 @@ class UniFiMediaPlayer(MediaPlayerEntity):
         """Set brightness-as-volume."""
         val = int(volume * 100)
         key = "volume" if "volume" in ACTION_MAPS[self._model] else "set_volume"
-        await self._client.perform_action(
-            self._device_id, ACTION_MAPS[self._model][key], f"\"value\":{val}"
-        )
+        try:
+            await self._client.perform_action(
+                self._device_id, ACTION_MAPS[self._model][key], f"\"value\":{val}"
+            )
+        except ClientResponseError as e:
+            if e.status != 404:
+                _LOGGER.warning("Volume set failed for %s: %s", self._attr_name, e)
         self._attr_volume_level = volume
 
     async def async_select_source(self, source: str) -> None:
@@ -155,4 +164,3 @@ class UniFiMediaPlayer(MediaPlayerEntity):
             await self._client.perform_action(self._device_id, ACTION_MAPS[self._model]["play"])
             self._attr_state = MediaPlayerState.PLAYING
             self._attr_source = "Cast"
-            
