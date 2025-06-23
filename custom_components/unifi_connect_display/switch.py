@@ -12,7 +12,9 @@ from .const import DOMAIN, ACTION_MAPS
 
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
     client: UniFiConnectClient = hass.data[DOMAIN][entry.entry_id]
     devices = await client.list_devices()
     entities = []
@@ -34,7 +36,8 @@ class UniFiDisplayPowerSwitch(SwitchEntity):
     def __init__(self, client, device_id, name, model):
         self._client = client
         self._device_id = device_id
-        self._attr_name = f"Status ({device_name})"
+        # Instead of the undefined `device_name`, use the `name` argument:
+        self._attr_name = name
         self._model = model
         self._state = False
         self._attr_unique_id = f"ucd_{device_id}_power"
@@ -62,8 +65,15 @@ class UniFiDisplayPowerSwitch(SwitchEntity):
         self._state = False
 
     async def async_update(self):
+        # only displays support the generic "switch" state query
+        if "switch" not in ACTION_MAPS[self._model]:
+            return
+
         try:
-            data = await self._client.perform_action(self._device_id, ACTION_MAPS[self._model]["switch"])
+            data = await self._client.perform_action(
+                self._device_id,
+                ACTION_MAPS[self._model]["switch"],
+            )
             self._state = data.get("powerState") == "ON"
         except Exception as e:
-            _LOGGER.warning("Power update failed for %s: %s", self._attr_name, e)
+            _LOGGER.debug("Power update skipped/failed for %s: %s", self._attr_name, e)
