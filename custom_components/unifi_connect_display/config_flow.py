@@ -43,21 +43,26 @@ class UniFiConnectFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 # site set later
             )
             try:
+                # 1) Login with a temporary session
                 await self._client.login()
             except Exception as ex:
                 _LOGGER.error("UniFi auth failed: %s", ex)
                 errors["base"] = "auth"
+                # Clean up that failed session
+                await self._client.close()
                 return self.async_show_form(
                     step_id="user",
                     data_schema=self._user_schema(),
                     errors=errors,
                 )
-
-            # Attempt to list sites via the API
+                
+            # 2) If login succeeded, fetch sites (if any)
             try:
                 sites = await self._client.list_sites()
             except ClientResponseError:
                 sites = []
+            # once we've fetched sites, close this temp session
+            await self._client.close()
 
             if sites:
                 # Build dropdown
