@@ -9,11 +9,13 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Initialize the integration."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # 1️⃣ Create and login the client one single time here
+    """Set up a UniFi Connect Display config entry."""
+    # 1️⃣ Create and log in the client once
     client = UniFiConnectClient(
         hass,
         entry.data["host"],
@@ -24,16 +26,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await client.login()
     hass.data[DOMAIN][entry.entry_id] = client
 
-    # 2️⃣ Forward to all three platforms in one call
+    # 2️⃣ Forward to all supported platforms
     await hass.config_entries.async_forward_entry_setups(
-        entry, ["sensor", "switch", "button"]
+        entry,
+        [
+            "sensor",
+            "switch",
+            "button",
+            "media_player",
+            "number",
+            "text",
+        ],
     )
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    # 3️⃣ Unload those platforms and close the session once
+    """Unload a UniFi Connect Display config entry."""
+    # 3️⃣ Unload all platforms and close the client session
     await hass.config_entries.async_unload_platforms(
-        entry, ["sensor", "switch", "button"]
+        entry,
+        [
+            "sensor",
+            "switch",
+            "button",
+            "media_player",
+            "number",
+            "text",
+        ],
     )
     client = hass.data[DOMAIN].pop(entry.entry_id)
     await client.close()
