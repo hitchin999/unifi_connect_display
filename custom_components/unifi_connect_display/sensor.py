@@ -22,9 +22,9 @@ async def async_setup_entry(
     entities = []
 
     for dev in devices:
-        # 🔴 use raw_model with the -Pro if it’s there
+        # 🔴 use raw_model with the -Pro if it’s there, but only real displays have “brightness”
         raw_model = dev.get("model") or dev.get("type", {}).get("name", "")
-        if raw_model not in ACTION_MAPS or "switch" not in ACTION_MAPS[raw_model]:
+        if raw_model not in ACTION_MAPS or "brightness" not in ACTION_MAPS[raw_model]:
             continue
 
         device_id = dev["id"]
