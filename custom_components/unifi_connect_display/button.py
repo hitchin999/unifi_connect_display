@@ -20,10 +20,8 @@ async def async_setup_entry(
 ) -> None:
     client: UniFiConnectClient = hass.data[DOMAIN][entry.entry_id]
 
-    # Devices + playlists
+    # Playlists are now handled via select.py; just load devices here.
     devices = await client.list_devices()
-    playlists_resp = await client.list_playlists()
-    playlists = playlists_resp.get("data", []) if isinstance(playlists_resp, dict) else []
 
     entities: list[UniFiDisplayButton] = []
 
@@ -32,35 +30,22 @@ async def async_setup_entry(
         if model_key not in ACTION_MAPS:
             continue
 
+        is_cast_pro = model_key == "UC-Cast-Pro"
+
         device_id = dev["id"]
         device_name = dev.get("name", model_key)
 
-        # Build buttons per action_name in ACTION_MAPS for this model
         for action_name in ACTION_MAPS[model_key].keys():
 
-            # --- Dynamic PLAY buttons for each playlist (no generic "Play") ---
-            if action_name == "play":
-                for pl in playlists:
-                    pl_id = pl.get("id")
-                    pl_name = pl.get("name") or pl_id
-                    if not pl_id:
-                        continue
-                    name = f"Play: {pl_name} ({device_name})"
-                    unique_id = f"ucd_{device_id}_play_{pl_id}"
-                    btn = UniFiDisplayButton(
-                        client=client,
-                        device_id=device_id,
-                        model=model_key,
-                        action_name="play",
-                        name=name,
-                        unique_id=unique_id,
-                    )
-                    btn._args = {"playlistId": pl_id}
-                    entities.append(btn)
-                # Skip adding a generic "Play" button
+            # Never create a generic "Volume" button (use Number entity)
+            if action_name in ("volume", "set_volume"):
                 continue
 
-            # --- STOP signage button (no args) ---
+            # UC-Cast-Pro: no Play/Rotate/Switch buttons (they are selects)
+            if is_cast_pro and action_name in ("play", "rotate", "switch"):
+                continue
+
+            # STOP signage button — keep a single explicit one (no args)
             if action_name == "stop":
                 name = f"Stop (Signage) ({device_name})"
                 unique_id = f"ucd_{device_id}_stop"
@@ -76,8 +61,8 @@ async def async_setup_entry(
                 )
                 continue
 
-            # --- Extras for switch (arg-specific only) ---
-            if action_name == "switch":
+            # For non–Cast-Pro models: create arg-specific Switch & Rotate buttons
+            if not is_cast_pro and action_name == "switch":
                 for mode in ("web", "youtube", "digitalSignage"):
                     friendly_mode = f"Switch → {mode} ({device_name})"
                     unique_mode_id = f"ucd_{device_id}_switch_{mode}"
@@ -94,8 +79,7 @@ async def async_setup_entry(
                 # Skip adding a generic "Switch" button
                 continue
 
-            # --- Extras for rotate (arg-specific only) ---
-            if action_name == "rotate":
+            if not is_cast_pro and action_name == "rotate":
                 for scale in ("portraitPrim", "landscapePrim", "landscapeSec", "portraitSec"):
                     friendly_scale = f"Rotate → {scale} ({device_name})"
                     unique_scale_id = f"ucd_{device_id}_rotate_{scale}"
@@ -112,11 +96,7 @@ async def async_setup_entry(
                 # Skip adding a generic "Rotate" button
                 continue
 
-            # --- Never create a generic "Volume" button (volume is a Number entity) ---
-            if action_name in ("volume", "set_volume"):
-                continue
-
-            # --- Default button (no args) for everything else (e.g., display_on/off, reboot, locating) ---
+            # Default button (no args) for everything else (display_on/off, reboot, locating, etc.)
             friendly = action_name.replace("_", " ").title()
             name = f"{friendly} ({device_name})"
             unique_id = f"ucd_{device_id}_{action_name}"
@@ -148,13 +128,13 @@ class UniFiDisplayButton(ButtonEntity):
         self._device_id = device_id
         self._model = model
         self._action_name = action_name
-        self._args: dict = {}  # optional args (e.g., {"mode":"web"}, {"playlistId": "..."})
+        self._args: dict = {}
 
         self._attr_name = name
         self._attr_unique_id = unique_id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
-            name=name.split(" (")[1][:-1],  # extract just the device_name
+            name=name.split(" (")[1][:-1],
             manufacturer="Ubiquiti",
             model=model,
         )
