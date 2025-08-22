@@ -12,6 +12,7 @@ from .const import DOMAIN, ACTION_MAPS
 
 _LOGGER = logging.getLogger(__name__)
 
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
@@ -22,6 +23,12 @@ async def async_setup_entry(
     for dev in devices:
         raw = dev.get("model") or dev.get("type", {}).get("name", "")
         model = raw.replace("-Pro", "")
+
+        # Guard: skip UC-Cast-Pro completely
+        if raw == "UC-Cast-Pro":
+            _LOGGER.debug("Skipping switch entity for UC-Cast-Pro")
+            continue
+
         if model not in ACTION_MAPS or "power_on" not in ACTION_MAPS[model]:
             continue
 
@@ -36,7 +43,6 @@ class UniFiDisplayPowerSwitch(SwitchEntity):
     def __init__(self, client, device_id, name, model):
         self._client = client
         self._device_id = device_id
-        # Instead of the undefined `device_name`, use the `name` argument:
         self._attr_name = name
         self._model = model
         self._state = False
