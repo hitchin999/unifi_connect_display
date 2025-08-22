@@ -10,14 +10,15 @@
   "codeowners": [
     "@hitchin999"
   ],
-  "version": "0.0.2",
+  "version": "0.0.3",
   "platforms": [
     "sensor",
     "switch",
     "button",
     "media_player",
     "number",
-    "text"
+    "text",
+    "select"
   ],
   "iot_class": "local_polling"
 }
