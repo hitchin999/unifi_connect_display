@@ -46,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "media_player",
             "number",
             "text",
+            "select",
         ],
     )
     return True
@@ -62,6 +63,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "media_player",
             "number",
             "text",
+            "select",
         ],
     )
     client = hass.data[DOMAIN].pop(entry.entry_id)
