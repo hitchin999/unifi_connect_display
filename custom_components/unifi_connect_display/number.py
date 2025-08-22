@@ -90,8 +90,10 @@ class UniFiVolumeNumber(NumberEntity):
         self._model = model
         self._attr_name = f"Volume ({device_name})"
         self._attr_unique_id = f"ucd_{device_id}_volume"
+        # UC Cast Pro reports maxVolume 40
         self._attr_native_min_value = 0
-        self._attr_native_max_value = 100
+        self._attr_native_max_value = 40
+        self._attr_native_step = 1
         self._value = None
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device_id)},
@@ -105,24 +107,17 @@ class UniFiVolumeNumber(NumberEntity):
         return self._value
 
     async def async_set_native_value(self, value: float):
-        args = f"\"value\":{int(value)}"
-        # pick whichever key exists
-        key = "volume" if "volume" in ACTION_MAPS[self._model] else "set_volume"
-        await self._client.perform_action(
-            self._device_id, ACTION_MAPS[self._model][key], args
-        )
-        self._value = value
+        # clamp and cast to int
+        ivalue = max(0, min(40, int(round(value))))
+        # choose the action NAME your model exposes
+        action_name = "set_volume" if "set_volume" in ACTION_MAPS[self._model] else "volume"
+        # call by NAME with args dict (perform_action maps to UUID)
+        await self._client.perform_action(self._device_id, action_name, {"value": ivalue})
+        self._value = float(ivalue)
+        self.async_write_ha_state()
 
     async def async_update(self):
-        try:
-            # Use the switch action to pull current state
-            data = await self._client.perform_action(
-                self._device_id, ACTION_MAPS[self._model]["switch"]
-            )
-            self._value = data.get("volume")
-        except ClientResponseError as e:
-            # ignore 404 if this device doesn’t support volume reporting
-            if e.status != 404:
-                _LOGGER.warning("Volume update failed for %s: %s", self._attr_name, e)
-        except Exception as e:
-            _LOGGER.warning("Volume update failed for %s: %s", self._attr_name, e)
+        # Optimistic: many firmwares don’t expose a direct “read volume” API.
+        # If you later add a GET status helper, you can populate self._value here.
+        return
+
