@@ -3,6 +3,7 @@
 import logging
 import aiohttp
 from aiohttp import ClientResponseError, TCPConnector
+from .const import ACTION_MAPS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -77,14 +78,59 @@ class UniFiConnectClient:
         resp.raise_for_status()
         return await resp.json()
 
-    async def perform_action(self, device_id: str, action_id: str, args: str | None = None) -> dict:
-        url = f"{self.base}/proxy/connect/api/v2/actions?deviceId={device_id}"
-        payload = {"actionId": action_id}
-        if args:
-            payload["args"] = args
-        resp = await self._request("post", url, json=payload)
+    async def perform_action(self, device_id: str, action_name: str, args: dict | None = None):
+        """
+        Send a Connect action by PATCHing the device's /status endpoint.
+
+        1) Look up the device model (e.g., "UC-Cast-Pro")
+        2) Resolve the action UUID from ACTION_MAPS[model][action_name]
+        3) PATCH /proxy/connect/api/v2/devices/{device_id}/status
+           body: {"id": "<uuid>", "name": "<action_name>", "args": {...}}
+        """
+        if args is None:
+            args = {}
+
+        # 1) Fetch device to determine model key used in const.ACTION_MAPS
+        dev_url = f"{self.base}/proxy/connect/api/v2/devices/{device_id}"
+        dev_resp = await self._session.get(dev_url, headers=self._headers(), ssl=False)
+        dev_resp.raise_for_status()
+        dev_data = await dev_resp.json()
+
+        # Model key preferred: "type.name" (e.g., "UC-Cast-Pro")
+        try:
+            model_key = dev_data["data"]["type"]["name"]
+        except Exception as e:
+            raise ValueError(f"Could not determine device model for {device_id}: {e}")
+
+        # 2) Resolve action UUID
+        try:
+            action_id = ACTION_MAPS[model_key][action_name]
+        except KeyError:
+            raise ValueError(f"Unsupported action '{action_name}' for model '{model_key}'")
+
+        # 3) PATCH status with required payload
+        url = f"{self.base}/proxy/connect/api/v2/devices/{device_id}/status"
+        payload = {"id": action_id, "name": action_name, "args": args}
+
+        resp = await self._session.patch(
+            url,
+            json=payload,
+            headers=self._headers(),  # includes CSRF if present
+            ssl=False,
+        )
         resp.raise_for_status()
         return await resp.json()
+
+    async def list_playlists(self) -> dict:
+        """
+        Return Connect playlists JSON:
+          {"err":null,"type":"collection","data":[{...}]}
+        """
+        url = f"{self.base}/proxy/connect/api/v2/playlists"
+        resp = await self._session.get(url, headers=self._headers(), ssl=False)
+        resp.raise_for_status()
+        return await resp.json()
+
 
     async def list_devices(self) -> list[dict]:
         """
