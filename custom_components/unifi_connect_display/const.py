@@ -79,20 +79,22 @@ ACTION_MAPS = {
         # add any other Cast-Pro specific actions you need...
     },
     
-        "UC-Cast-Pro": {
-        # copy or customize from “UC-Cast”:
-        "power_on":      "77cb7a55-2b1a-415a-8912-a2d72a94b155",
-        "power_off":     "124d9d99-48cf-48cf-8fbc-ef8e5f0e0771",
-        "play":          "697c1eda-608a-4eb6-9bf6-df7067029009",
-        "stop":          "09794cd6-c06f-4963-982b-97394c152234",
-        "switch":        "20d60268-7c51-4e86-8d9e-59ec4cf2266d",
-        "start_locating":"bd1decba-e310-4fff-b28d-85cbfec0cd96",
-        "stop_locating": "15800beb-74d7-404a-9726-0bda39b78450",
-        "reboot":        "717df2b0-5f04-487f-8681-e8a49663c75a",
-        "set_volume":    "d9e4166f-c0e6-4cf4-bfde-ed166671ab27",
-        "rotate":        "3f44cd3d-8da8-4fa4-b64a-5932568b9f24",
-        # …etc…
+    "UC-Cast-Pro": {
+        "display_on":     "ec009f8e-5e14-4b64-9af5-a0156f086548",
+        "display_off":    "939eaeae-8863-4134-be07-c72764c1c3dd",
+        "switch":         "145f081f-347f-402f-acc4-985764a32d4a",  # args: {"mode": "..."}
+        "rotate":         "cac5cd87-0dab-4ebb-a6ed-ff99a6c571e5",  # args: {"scale": "..."}
+        "volume":         "706b3ed5-f504-4390-9b8a-f9db7e65294b",  # args: {"value": 0..40}
+    
+        # ✅ Signage playback on Cast Pro:
+        "play":           "cad6de47-3899-431e-a960-1511995aba3e",  # args: {"playlistId": "<uuid>"}
+        "stop":           "674cbd11-c441-4317-9306-d55dbf3f3147",  # no args
+    
+        "reboot":         "41d99474-e8bc-48a2-8dae-de09a136750c",
+        "start_locating": "44154a1f-ef9f-4f0e-986a-428019fcb426",
+        "stop_locating":  "bea18199-247c-4783-bc1d-50a54f28b3be",
     },
+
     
         "UC-Display-7": {
         "display_on":                  "d09e5887-42bd-4ea9-99ac-1d5ff877a4d",
