@@ -5,6 +5,7 @@ CONF_HOST     = "host"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_SITE     = "site"
+SIGNAL_DEVICE_UPDATE = f"{DOMAIN}_device_update"
 
 # Per-model action UUID maps
 ACTION_MAPS = {
@@ -79,6 +80,7 @@ ACTION_MAPS = {
         # add any other Cast-Pro specific actions you need...
     },
     
+
     "UC-Cast-Pro": {
         "display_on":     "ec009f8e-5e14-4b64-9af5-a0156f086548",
         "display_off":    "939eaeae-8863-4134-be07-c72764c1c3dd",
@@ -88,11 +90,22 @@ ACTION_MAPS = {
     
         # ✅ Signage playback on Cast Pro:
         "play":           "cad6de47-3899-431e-a960-1511995aba3e",  # args: {"playlistId": "<uuid>"}
-        "stop":           "674cbd11-c441-4317-9306-d55dbf3f3147",  # no args
+        "stop":           "674cbd11-c441-4317-9306-d55dbf3f3147",
     
         "reboot":         "41d99474-e8bc-48a2-8dae-de09a136750c",
         "start_locating": "44154a1f-ef9f-4f0e-986a-428019fcb426",
         "stop_locating":  "bea18199-247c-4783-bc1d-50a54f28b3be",
+    
+        # 🆕 Website / reload actions
+        "load_website":        "efc39277-4f65-4975-9636-ba7ce6adbb5a",  # args: {"url": "..."}
+        "refresh_website":     "570eaf19-dbf0-4979-9b69-e597ab501aa6",
+        "enable_auto_reload":  "f0d0da6e-ab91-4614-affa-9eb49c54b09b",
+        "disable_auto_reload": "12cb825f-b8f1-424c-b704-6aaef162c111",
+    
+        # 🆕 YouTube
+        "load_youtube":        "41aa66a9-30d3-4d4b-b3c6-e2cac20a3331",  # args: {"url": "..."}
+        # (optional but handy)
+        "signage_screen_fit":  "270d1236-be38-4ff5-a2f0-2c83efbf3b74",
     },
 
     
