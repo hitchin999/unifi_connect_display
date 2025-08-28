@@ -27,6 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data.get("site"),
     )
     await client.login()
+    await client.start_ws()
     hass.data[DOMAIN][entry.entry_id] = client
 
     # — Listen for HA stopping so we can always close our session —
@@ -67,5 +68,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ],
     )
     client = hass.data[DOMAIN].pop(entry.entry_id)
+    await client.stop_ws()
     await client.close()
     return True
