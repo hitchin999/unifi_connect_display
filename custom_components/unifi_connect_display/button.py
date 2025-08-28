@@ -1,5 +1,4 @@
 # custom_components/unifi_connect_display/button.py
-
 import logging
 from homeassistant.components.button import ButtonEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -12,6 +11,8 @@ from .const import DOMAIN, ACTION_MAPS
 
 _LOGGER = logging.getLogger(__name__)
 
+# Any actions that should be represented as a switch (not as buttons)
+_POWER_ACTIONS = {"power_on", "power_off", "display_on", "display_off"}
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -20,9 +21,7 @@ async def async_setup_entry(
 ) -> None:
     client: UniFiConnectClient = hass.data[DOMAIN][entry.entry_id]
 
-    # Playlists are now handled via select.py; just load devices here.
     devices = await client.list_devices()
-
     entities: list[UniFiDisplayButton] = []
 
     for dev in devices:
@@ -36,16 +35,19 @@ async def async_setup_entry(
         device_name = dev.get("name", model_key)
 
         for action_name in ACTION_MAPS[model_key].keys():
-
-            # Never create a generic "Volume" button (use Number entity)
+            # 1) Never create volume buttons (Number entity handles it elsewhere)
             if action_name in ("volume", "set_volume"):
                 continue
 
-            # UC-Cast-Pro: no Play/Rotate/Switch buttons (they are selects)
+            # 2) UC-Cast-Pro: play/rotate/switch are selects, not buttons
             if is_cast_pro and action_name in ("play", "rotate", "switch"):
                 continue
 
-            # STOP signage button — keep a single explicit one (no args)
+            # 3) Power-related actions are now handled by a Switch entity
+            if action_name in _POWER_ACTIONS:
+                continue
+
+            # 4) Keep a single explicit STOP signage button
             if action_name == "stop":
                 name = f"Stop (Signage) ({device_name})"
                 unique_id = f"ucd_{device_id}_stop"
@@ -61,7 +63,7 @@ async def async_setup_entry(
                 )
                 continue
 
-            # For non–Cast-Pro models: create arg-specific Switch & Rotate buttons
+            # 5) For non–Cast-Pro models create arg-specific Switch & Rotate buttons
             if not is_cast_pro and action_name == "switch":
                 for mode in ("web", "youtube", "digitalSignage"):
                     friendly_mode = f"Switch → {mode} ({device_name})"
@@ -76,7 +78,6 @@ async def async_setup_entry(
                     )
                     btn._args = {"mode": mode}
                     entities.append(btn)
-                # Skip adding a generic "Switch" button
                 continue
 
             if not is_cast_pro and action_name == "rotate":
@@ -93,10 +94,9 @@ async def async_setup_entry(
                     )
                     btn._args = {"scale": scale}
                     entities.append(btn)
-                # Skip adding a generic "Rotate" button
                 continue
 
-            # Default button (no args) for everything else (display_on/off, reboot, locating, etc.)
+            # 6) Default button for everything else
             friendly = action_name.replace("_", " ").title()
             name = f"{friendly} ({device_name})"
             unique_id = f"ucd_{device_id}_{action_name}"
