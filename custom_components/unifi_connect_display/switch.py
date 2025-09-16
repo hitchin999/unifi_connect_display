@@ -118,7 +118,7 @@ class UniFiDisplayPowerSwitch(SwitchEntity):
 
     def _handle_device_push(self, device_id: str) -> None:
         if device_id == self._device_id:
-            self.async_schedule_update_ha_state(True)
+            self.schedule_update_ha_state(True)
 
     # ─────────────────────────── Read state ───────────────────────────
 
