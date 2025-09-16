@@ -126,7 +126,7 @@ class _BaseUcdSelect(SelectEntity):
 
     def _handle_device_push(self, device_id: str) -> None:
         if device_id == self._device_id:
-            self.async_schedule_update_ha_state(True)
+            self.schedule_update_ha_state(True)
 
     def _get_cached(self) -> Optional[dict]:
         return self._client.get_cached_device(self._device_id)
